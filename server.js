@@ -62,7 +62,8 @@ let ordini = [
   
 ];
 let nextClientId = clienti.length + 1;
-
+let nextBevandaId = bevande.length+1;
+let nextOrdineId = ordini.length+1;
 //Middleware -> parametri: request, response, next 
 //Sempre prima del router handler
 
@@ -156,7 +157,14 @@ app.post("/clienti", (req, res) => {
 
 //Rotta per POST ordini
 app.post("/ordini",(req,res)=>{
+    const bevandaId = req.body.bevandaId;
+    const clienteId = req.body.clienteId;
+    const qta = req.body.quantita;
     
+    let newOrder = {
+        
+    }
+
 })
 
 //Route handler
