@@ -2,112 +2,168 @@
 //node --watch server.js
 //Ctrl S
 const express = require('express');
-const app= express();
+const app = express();
 
 
 let clienti = [
-{id:1,
-    nome : "Han Solo",
-    specie: "umano",
-    crediti: 1500
-},
-{id:2,
-    nome: "Chewbecca",
-    specie:"wookie",
-    crediti: 900,
-},
-{id:3,
-    nome: "Greedo",
-    specie:"rodiano",
-    crediti : 900
-},
-{id:4,
-    nome: "hammerhead",
-    specie: "ithoriano",
-    crediti: 200
-}
+    {
+        id: 1,
+        nome: "Han Solo",
+        specie: "umano",
+        credito: 1500
+    },
+    {
+        id: 2,
+        nome: "Chewbecca",
+        specie: "wookie",
+        credito: 900,
+    },
+    {
+        id: 3,
+        nome: "Greedo",
+        specie: "rodiano",
+        credito: 900
+    },
+    {
+        id: 4,
+        nome: "hammerhead",
+        specie: "ithoriano",
+        credito: 200
+    }
 ];
 
 let bevande = [
-    {id: 1,
+    {
+        id: 1,
         nome: "Corelian Ale",
         prezzo: 50,
         gradazione: 8
     },
-    {id:2,
+    {
+        id: 2,
         nome: "Juice",
         prezzo: 80,
-        gradazione : 15
+        gradazione: 15
     },
-    {id:3,
+    {
+        id: 3,
         nome: "Meranzane Gold",
-        prezzo:120,
+        prezzo: 120,
         gradazione: 8
     },
-    {id:4,
+    {
+        id: 4,
         nome: "Spotchka",
-        prezzo:200,
+        prezzo: 200,
         gradazione: 20
     }
-]
-
-let nextClientId = clienti.length+1;
+];
+let ordini = [
+  
+];
+let nextClientId = clienti.length + 1;
 
 //Middleware -> parametri: request, response, next 
 //Sempre prima del router handler
+
+//LOGGER
 //Log di request method con url
-app.use((req,res,next)=>{
-    console.log("[CANTINA LOG] "+req.method+" "+req.url);
+app.use((req, res, next) => {
+    console.log("[CANTINA LOG] " + req.method + " " + req.url);
     next();
 });
 //Middleware : in assenza di tessera (clientiId), bloccato l'acceso 
-//Guardia
-app.use("/clienti",(req,res,next)=>{
+//GUARDIANO TESSERA
+app.use("/clienti", (req, res, next) => {
     const tessera = req.headers["x-tessera"];
-    if(!tessera){
-        res.status(403).json({error:"devi avere una tessera. Regola della cantina"});
+    if (!tessera) {
+        res.status(403).json({ error: "devi avere una tessera. Regola della cantina" });
     }
     next();
 });
 //Aggiunge il contesto
-app.use("/clienti",(req,res,next)=>{
+//LETTORE GETTONI
+app.use("/clienti", (req, res, next) => {
     const gettoni = parseInt(req.headers["x-gettoni"]);
-    console.log("[MW Clienti gettoni: ]"+gettoni);
-    if(isNaN(gettoni)){
-        req.gettoni=0;
+    console.log("[MW Clienti gettoni: ]" + gettoni);
+    if (isNaN(gettoni)) {
+        req.gettoni = 0;
     }
-    else{
-        req.gettoni=gettoni;
+    else {
+        req.gettoni = gettoni;
     }
     next();
 });
 //Controlla POST e PUT
-app.use("/clienti",(req,res,next)=>{
-    if((req.method!=="POST")&&(req.method!=="PUT")){
+//VALIDATORE STRUTTURA CLIENTE
+app.use("/clienti", (req, res, next) => {
+    if ((req.method !== "POST") && (req.method !== "PUT")) {
         return next();
     }
     //Estrae il campo dalla richiesta ___> Cliente
     const nome = req.body.nome;
     const specie = req.body.specie;
-    const crediti = req.body.crediti;
+    const credito = req.body.credito;
     //Validazione input
-    if(!nome){
-        res.status(400).json({errore: "URL mal formato"});
+    if (!nome || nome.trim() === '') {
+        return res.status(400).json({ errore: "URL mal formato" });
     }
+    if (!specie || specie.trim() === '') {
+        return res.status(400).json({ errore: "URL mal formato" });
+    }
+    if (!crediti || crediti < 0 || isNaN(parseInt(crediti))) {
+        return res.status(400).json({ errore: "URL mal formato" });
+    }
+    next();
+});
+//VALIDATORE STRUTTURA ORDINE
+    app.use("/ordini", (req, res, next) => {
+    //Controlla clienteId, bevanda, quantità
+    if(req.method!=="POST"){
+        return next();
+    }
+    const clienteId = req.body.clienteId;
+    const bevandaId = req.body.bevandaId;
+    const qta = req.body.quantita ;
+    if (!clienteId || clienteId.trim()===''){
+        return res.status(400).json("URL mal formato");
+    }
+    if (!bevandaId || bevandaId.trim()===''){
+        return res.status(400).json("URL mal formato");
+    }
+    if (!qta || qta<1 || isNaN(parseInt(qta))){
+        return res.status(400).json("URL mal formato");
+    }
+    next();
+});
+//Rotta per POST clienti
+app.post("/clienti", (req, res) => {
+    const nome = req.body.nome;
+    const specie = req.body.specie;
+    const credito = req.body.credito;
 
-    if(!specie){
-        res.status(400).json({errore: "Specie non specificata"});
+    //Controllo se nuovo utente è già tra I clienti
+    for (let c of clienti) {
+        if (c.nome.toLocaleLowerCase() === nome.toLowerCase()) {
+            res.status(409).resjson({ errore: "Nome non disponibile" });
+        }
     }
-    if(!crediti){
-        res.status(400).json({errore: "Crediti invalidi"});
-    }
+    let newClient = { id: nextClientId, nome: nome, credito: crediti };
+    clienti.push(newClient);
+    nextClientId++;
+    res.status(201).json(newClient);
+});
+
+//Rotta per POST ordini
+app.post("/ordini",(req,res)=>{
+    
 })
 
 //Route handler
-app.get("/clienti",(req,res) => {
-res.json(clienti);
+app.get("/clienti", (req, res) => {
+    res.json(clienti);
 });
 
-app.listen(3000,()=>{
+app.listen(3000, () => {
     console.log("Connessione aperta sulla porta 3000");
 })
