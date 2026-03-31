@@ -6,60 +6,20 @@ const app = express();
 
 
 let clienti = [
-    {
-        id: 1,
-        nome: "Han Solo",
-        specie: "umano",
-        credito: 1500
-    },
-    {
-        id: 2,
-        nome: "Chewbecca",
-        specie: "wookie",
-        credito: 900,
-    },
-    {
-        id: 3,
-        nome: "Greedo",
-        specie: "rodiano",
-        credito: 900
-    },
-    {
-        id: 4,
-        nome: "hammerhead",
-        specie: "ithoriano",
-        credito: 200
-    }
+    {id: 1, nome: "Han Solo", specie: "umano", credito: 1500},
+    {id: 2, nome: "Chewbecca", specie: "wookie",credito: 900},
+    {id: 3, nome: "Greedo", specie: "rodiano", credito: 900},
+    {id: 4, nome: "hammerhead", specie: "ithoriano", credito: 200}
 ];
 
 let bevande = [
-    {
-        id: 1,
-        nome: "Corelian Ale",
-        prezzo: 50,
-        gradazione: 8
-    },
-    {
-        id: 2,
-        nome: "Juice",
-        prezzo: 80,
-        gradazione: 15
-    },
-    {
-        id: 3,
-        nome: "Meranzane Gold",
-        prezzo: 120,
-        gradazione: 8
-    },
-    {
-        id: 4,
-        nome: "Spotchka",
-        prezzo: 200,
-        gradazione: 20
-    }
+    {id: 1,nome: "Corelian Ale", prezzo: 50, gradazione: 8},
+    {id: 2, nome: "Juice", prezzo: 80, gradazione: 15},
+    {id: 3, nome: "Meranzane Gold", prezzo: 120, gradazione: 8},
+    {id: 4, nome: "Spotchka", prezzo: 200, gradazione: 20},
 ];
+
 let ordini = [
-  
 ];
 let nextClientId = clienti.length + 1;
 let nextBevandaId = bevande.length+1;
@@ -157,10 +117,12 @@ app.post("/clienti", (req, res) => {
 
 //Rotta per POST ordini
 app.post("/ordini",(req,res)=>{
+    //Validazione handler
     const bevandaId = req.body.bevandaId;
     const clienteId = req.body.clienteId;
     const qta = req.body.quantita;
-    
+    let costo_base = calcolaCosto(bevandaId,qta);
+    let costo_totale = verificaPrezzo(bevandaId,costo_base);
     let newOrder = {
         
     }
@@ -175,3 +137,32 @@ app.get("/clienti", (req, res) => {
 app.listen(3000, () => {
     console.log("Connessione aperta sulla porta 3000");
 })
+
+
+function calcolaCosto(bevandaId,qta){
+    let costo_base = 0 ;
+    for (let b of bevande) {
+        if (b.id===bevandaId){
+            costo_base = b.prezzo*qta;
+        }
+    }
+    return costo_base;
+  
+};
+
+function verificaPrezzo(bevandaId,costo_base) {
+    let maggiorazione = false;
+    let costo_totale = 0 ;
+    for (let b of bevande) {
+        if (b.id===bevandaId) {
+            if (b.gradazione>10){
+                maggiorazione = true;
+            }
+        }
+    }
+    if (maggiorazione) {
+        let iva = (costo_base/100)*15;
+    }
+    costo_totale = costo_base+iva ;
+    return costo_totale;
+}
