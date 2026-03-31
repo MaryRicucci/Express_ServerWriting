@@ -118,15 +118,47 @@ app.post("/clienti", (req, res) => {
 //Rotta per POST ordini
 app.post("/ordini",(req,res)=>{
     //Validazione handler
-    const bevandaId = req.body.bevandaId;
-    const clienteId = req.body.clienteId;
-    const qta = req.body.quantita;
-    let costo_base = calcolaCosto(bevandaId,qta);
-    let costo_totale = verificaPrezzo(bevandaId,costo_base);
-    let newOrder = {
-        
+    let clienteId = null;
+    let bevandaId = null;
+    for (let c of clienti) {
+        if (c.id ===req.body.clienteId){
+            clienteId = req.body.clienteId;
+            break;
+        }
     }
 
+    for (let b of bevande) {
+        if(b.id===req.body.bevandaId){
+            bevandaId = req.body.bevandaId;
+            break;
+        }
+    }
+
+    if(!clienteId) {
+        return res.status(404).res.json("Cliente non trovato")
+    }
+    
+    if(!bevandaId) {
+        return res.status(404).res.json("Bevanda non trovata");
+    }
+    
+    const qta = req.body.quantita;
+    let costo_base = calcolaCosto(bevandaId,qta);
+    let verifyMag = verificaPrezzo(bevandaId,costo_base);
+    let maggiorazione = verifyMag.iva ;
+    let costo_totale = verifyMag.costo_totale ;
+    let newOrder = {
+        id : nextOrdineId ,
+        cliente : clienteId ,
+        bevanda : bevandaId ,
+        quantita : qta ,
+        costo_base : costo_base , 
+        maggiorazione : maggiorazione ,
+        costo_totale : costo_totale
+    }
+    ordini.push(newOrder);
+    nextOrdineId++;
+    res.status(201).json(newOrder);
 })
 
 //Route handler
@@ -152,6 +184,7 @@ function calcolaCosto(bevandaId,qta){
 
 function verificaPrezzo(bevandaId,costo_base) {
     let maggiorazione = false;
+    let iva = 0 ;
     let costo_totale = 0 ;
     for (let b of bevande) {
         if (b.id===bevandaId) {
@@ -161,8 +194,8 @@ function verificaPrezzo(bevandaId,costo_base) {
         }
     }
     if (maggiorazione) {
-        let iva = (costo_base/100)*15;
+        iva = (costo_base/100)*15;
     }
     costo_totale = costo_base+iva ;
-    return costo_totale;
+    return {iva, costo_totale};
 }
