@@ -3,12 +3,13 @@
 //Ctrl S
 const express = require('express');
 const app = express();
-
+app.use(express.json());
+//Tutti i MIDDLEWARE OK
 
 let clienti = [
     {id: 1, nome: "Han Solo", specie: "umano", credito: 1500},
     {id: 2, nome: "Chewbecca", specie: "wookie",credito: 900},
-    {id: 3, nome: "Greedo", specie: "rodiano", credito: 900},
+    {id: 3, nome: "Greedo", specie: "rodiano", credito: 300},
     {id: 4, nome: "hammerhead", specie: "ithoriano", credito: 200}
 ];
 
@@ -72,31 +73,39 @@ app.use("/clienti", (req, res, next) => {
     if (!specie || specie.trim() === '') {
         return res.status(400).json({ errore: "URL mal formato" });
     }
-    if (!crediti || crediti < 0 || isNaN(parseInt(crediti))) {
+    if (!credito || credito < 0 || isNaN(parseInt(credito))) {
         return res.status(400).json({ errore: "URL mal formato" });
     }
     next();
 });
 //VALIDATORE STRUTTURA ORDINE
-    app.use("/ordini", (req, res, next) => {
-    //Controlla clienteId, bevanda, quantità
-    if(req.method!=="POST"){
+app.use("/ordini", (req, res, next) => {
+    if (req.method !== "POST") {
         return next();
     }
+
     const clienteId = req.body.clienteId;
     const bevandaId = req.body.bevandaId;
-    const qta = req.body.quantita ;
-    if (!clienteId || clienteId.trim()===''){
+    const qta = req.body.quantita;
+
+    // clienteId deve essere un numero valido
+    if (clienteId === undefined || isNaN(parseInt(clienteId))) {
         return res.status(400).json("URL mal formato");
     }
-    if (!bevandaId || bevandaId.trim()===''){
+
+    // bevandaId deve essere un numero valido
+    if (bevandaId === undefined || isNaN(parseInt(bevandaId))) {
         return res.status(400).json("URL mal formato");
     }
-    if (!qta || qta<1 || isNaN(parseInt(qta))){
+
+    // quantita deve essere un numero >= 1
+    if (qta === undefined || isNaN(parseInt(qta)) || qta < 1) {
         return res.status(400).json("URL mal formato");
     }
+
     next();
 });
+
 //Rotta per POST clienti
 app.post("/clienti", (req, res) => {
     const nome = req.body.nome;
@@ -106,13 +115,32 @@ app.post("/clienti", (req, res) => {
     //Controllo se nuovo utente è già tra I clienti
     for (let c of clienti) {
         if (c.nome.toLocaleLowerCase() === nome.toLowerCase()) {
-            res.status(409).resjson({ errore: "Nome non disponibile" });
+            return res.status(409).json({ errore: "Nome non disponibile" });
         }
     }
-    let newClient = { id: nextClientId, nome: nome, credito: crediti };
+    let newClient = { id: nextClientId, nome: nome,specie: specie, credito: credito };
     clienti.push(newClient);
     nextClientId++;
-    res.status(201).json(newClient);
+     res.status(201).json(newClient);
+});
+//Route handler
+app.get("/clienti", (req, res) => {
+    res.json(clienti);
+});
+
+app.get("/clienti/:id",(req,res)=>{
+    const idCliente = parseInt(req.params.id);
+    let cliente = null;
+    for (let c of clienti) {
+        if(c.id===idCliente){
+            cliente = c ;
+            break;
+        }
+    }
+    if(!cliente){
+        return res.status(404).json("Cliente non trovato");
+    }
+    res.status(200).json(cliente);
 });
 
 //Rotta per POST ordini
@@ -147,6 +175,19 @@ app.post("/ordini",(req,res)=>{
     let verifyMag = verificaPrezzo(bevandaId,costo_base);
     let maggiorazione = verifyMag.iva ;
     let costo_totale = verifyMag.costo_totale ;
+    const idCliente = req.body.clienteId ;
+    let client = null;
+    for (let c of clienti) {
+        if (c.id===idCliente) {
+            client = c;
+        }
+    }
+    if (!client) {
+        return res.status(404).json("Cliente non trovato");
+    }
+    if(client.credito<costo_totale){
+        return res.status(403).json("Credito insufficiente");
+    }
     let newOrder = {
         id : nextOrdineId ,
         cliente : clienteId ,
@@ -157,15 +198,69 @@ app.post("/ordini",(req,res)=>{
         costo_totale : costo_totale
     }
     ordini.push(newOrder);
+    client.credito-=costo_totale;
     nextOrdineId++;
     res.status(201).json(newOrder);
 })
 
-//Route handler
-app.get("/clienti", (req, res) => {
-    res.json(clienti);
+//Rotta per PUT cliente
+app.put("/clienti/:id",(req,res)=>{
+    const idCliente = parseInt(req.params.id);
+    let cliente = null;
+    for (let c of clienti) {
+        if (c.id===idCliente) {
+           cliente = c;
+           break;
+        }
+    }
+    if(!cliente){
+        return res.status(404).json("Utente non trovato");
+    }
+    cliente.nome = req.body.nome;
+    cliente.credito = req.body.credito;
+    cliente.specie = req.body.specie;
+    res.status(200).json(cliente);
 });
 
+//Rotta per DELETE cliente
+app.delete("/clienti/:id",(req,res)=>{
+    const id = parseInt(req.params.id);
+    let cliente = -1;
+    for (let c=0; c<clienti.length;c++) {
+        if (clienti[c].id ===id) {
+            cliente = c;
+            break;
+        }
+    }
+    if(cliente<0){
+        return res.status(404).json("Cliente non trovato");
+    }
+    clienti.splice(cliente,1);
+    res.status(200).json("Cliente eliminato");
+})
+
+//Rotta per GET bevande
+app.get("/bevande",(req,res)=>{
+    res.json(bevande);
+})
+//Rotta per GET ordini
+app.get("/ordini",(req,res)=>{
+    res.json(ordini);
+})
+app.get("/ordini/:id",(req,res)=>{
+    const id = parseInt/req.params.id;
+    let ordine = null;
+    for (let o of ordini) {
+        if (o.id===id){
+            ordine=o;
+            break;
+        }
+    }
+    if(!ordine){
+        return res.status(404).json("Ordine non trovato")
+    }
+    res.status(200).json(ordine);
+})
 app.listen(3000, () => {
     console.log("Connessione aperta sulla porta 3000");
 })
