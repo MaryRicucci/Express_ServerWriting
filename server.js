@@ -106,6 +106,18 @@ app.use("/ordini", (req, res, next) => {
     next();
 });
 
+app.use("/bevande",(req,res,next)=>{
+const headerReq = req.headers["x-gradazione-max"];
+const parsed = parseInt(headerReq);
+if(!headerReq||Number.isNaN(parsed)){
+    req.gradazioneMax = null ;
+}
+else {
+    req.gradazioneMax = parsed;
+}
+next();
+});
+
 //Rotta per POST clienti
 app.post("/clienti", (req, res) => {
     const nome = req.body.nome;
@@ -123,6 +135,7 @@ app.post("/clienti", (req, res) => {
     nextClientId++;
      res.status(201).json(newClient);
 });
+
 //Route handler
 app.get("/clienti", (req, res) => {
     res.json(clienti);
@@ -239,16 +252,13 @@ app.delete("/clienti/:id",(req,res)=>{
     res.status(200).json("Cliente eliminato");
 })
 
-//Rotta per GET bevande
-app.get("/bevande",(req,res)=>{
-    res.json(bevande);
-})
+
 //Rotta per GET ordini
 app.get("/ordini",(req,res)=>{
     res.json(ordini);
 })
 app.get("/ordini/:id",(req,res)=>{
-    const id = parseInt/req.params.id;
+    const id = parseInt(req.params.id);
     let ordine = null;
     for (let o of ordini) {
         if (o.id===id){
@@ -261,6 +271,24 @@ app.get("/ordini/:id",(req,res)=>{
     }
     res.status(200).json(ordine);
 })
+
+//Rotta per GET bevande 
+app.get("/bevande",(req,res)=>{
+    let bev = [];
+  if (req.gradazioneMax===null){
+    return res.json(bevande);
+  }
+  else {
+    for (let b of bevande) {
+        if (b.gradazione<=req.gradazioneMax){
+           bev.push(b);
+        }
+    }
+    res.status(200).json(bev);
+  }
+})
+
+
 app.listen(3000, () => {
     console.log("Connessione aperta sulla porta 3000");
 })
