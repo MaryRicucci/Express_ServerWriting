@@ -19,9 +19,14 @@ let bevande = [
     {id: 3, nome: "Meranzane Gold", prezzo: 120, gradazione: 8},
     {id: 4, nome: "Spotchka", prezzo: 200, gradazione: 20},
 ];
-
 let ordini = [
+    {id: 1, clienteId: 1, bevandaId: 4, quantita: 3, costoBase: 600, maggiorazione: 90, costoTotale: 690},
+    {id: 2, clienteId: 2, bevandaId: 1, quantita: 10, costoBase: 500, maggiorazione: 0, costoTotale: 500},
+    {id: 3, clienteId: 3, bevandaId: 3, quantita: 2, costoBase: 240, maggiorazione: 36, costoTotale: 276},
+    {id: 4, clienteId: 4, bevandaId: 2, quantita: 2, costoBase: 160, maggiorazione: 24, costoTotale: 184}
 ];
+let taglie = [];
+
 let nextClientId = clienti.length + 1;
 let nextBevandaId = bevande.length+1;
 let nextOrdineId = ordini.length+1;
@@ -46,6 +51,13 @@ app.use("/clienti", (req, res, next) => {
 //Aggiunge il contesto
 //LETTORE GETTONI
 app.use("/clienti", (req, res, next) => {
+    const ruolo = req.headers["x-ruolo"];
+    if (!ruolo){
+        req.ruolo = "ospite";
+    }
+    else {
+        req.ruolo = ruolo ;
+    }
     const gettoni = parseInt(req.headers["x-gettoni"]);
     console.log("[MW Clienti gettoni: ]" + gettoni);
     if (isNaN(gettoni)) {
@@ -203,8 +215,8 @@ app.post("/ordini",(req,res)=>{
     }
     let newOrder = {
         id : nextOrdineId ,
-        cliente : clienteId ,
-        bevanda : bevandaId ,
+        clienteId : clienteId ,
+        bevandaId : bevandaId ,
         quantita : qta ,
         costo_base : costo_base , 
         maggiorazione : maggiorazione ,
@@ -287,7 +299,96 @@ app.get("/bevande",(req,res)=>{
     res.status(200).json(bev);
   }
 })
+//Get clienti/id/ordini
+app.get("/clienti/:id/ordini",(req,res)=>{
+    const id = parseInt(req.params.id) ;
+    let cliente = null ;
+    if (!Number.isInteger(Number(id))){
+        return res.status(400).json("Id non valido");
+    }
+    for (let c of clienti) {
+        if (c.id===id){
+            cliente = c;
+            break ;
+        }
+    }
+    if (!cliente) {
+        return res.status(404).json("Cliente non trovato");
+    }
+    let orders = [];
+    for (let o of ordini){
+        if (o.clienteId===id){
+            orders.push(o);
+        }
+    }
+    if (req.ruolo==="admin"){
+        return res.status(200).json(orders);
+    }
+    else{
+        let ordineWh = [];
+        for (let o of orders) {
+            let copia = {
+                id: o.id,
+                clienteId : o.clienteId,
+                bevandaId: o.bevandaId,
+                quantita: o.quantita,
+                costo_base: o.costo_base ,
+                maggiorazione: o.maggiorazione
+            }
+            ordineWh.push(copia);
+        }
+        return res.status(200).json(ordineWh);
+    }
+});
+//Rotta GET clienti/id/riepilogo
+app.get("/clienti/:id/riepilogo",(req,res)=>{
+    const id = parseInt(req.params.id);
+    if (!Number.isinteger(Number(id))){
+        return res.status(400).json("id non valido");
+    }
+    let cliente = null;
+    for (let c of clienti) {
+        if (c.id===id){
+            cliente = c ;
+            break ;
+        }
+    }
+    if (!cliente){
+        return res.status(404).json("Utente non trovato");
+    }
+    /*Calcolare e restituire un oggetto con i seguenti campi:
+cliente: nome del cliente OK 
+credito_attuale: credito corrente OK
+numero_ordini: quanti ordini ha effettuato OK
+totale_speso: somma di tutti i costo_totale degli ordini del cliente OK
+bevanda_preferita: nome della bevanda ordinata in maggiore quantita totale. Null se non ha ordini.
+taglie_attive: numero di taglie con attiva=true che hanno il clienteId corrispondente* OK /
+let counter = 0 ;
+let totale = 0;
+let favourite = null ;
+/* Taglia:
+-id
+-clienteId,
+-motivazione,
+-ricompensa
+-attiva
+*/
+let bevanda = -1;
+let taglie = 0;
+for (let o of orders) {
+if (o.clienteId===id){
+    counter++;
+    totale+=costoTotale;
+    
+}
 
+for (let t of taglie) {
+    if ((t.clienteId===id)&&(t.attiva===true)){
+        taglie++;
+    }
+}
+
+}});
 
 app.listen(3000, () => {
     console.log("Connessione aperta sulla porta 3000");
