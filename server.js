@@ -357,37 +357,55 @@ app.get("/clienti/:id/riepilogo",(req,res)=>{
         return res.status(404).json("Utente non trovato");
     }
     /*Calcolare e restituire un oggetto con i seguenti campi:
-cliente: nome del cliente OK 
-credito_attuale: credito corrente OK
-numero_ordini: quanti ordini ha effettuato OK
-totale_speso: somma di tutti i costo_totale degli ordini del cliente OK
+
 bevanda_preferita: nome della bevanda ordinata in maggiore quantita totale. Null se non ha ordini.
-taglie_attive: numero di taglie con attiva=true che hanno il clienteId corrispondente* OK /
-let counter = 0 ;
-let totale = 0;
-let favourite = null ;
-/* Taglia:
--id
--clienteId,
--motivazione,
--ricompensa
--attiva
 */
-let bevanda = -1;
-let taglie = 0;
+let result = {
+    cliente : cliente.nome ,
+    credito_attuale: cliente.credito , 
+    numero_ordini : 0 ,
+    totale_speso : 0 ,
+    bevanda_preferita: null,
+    taglie_attive: 0 ,
+}
+let clientOrders = [];
+let bevandePref = [];
 for (let o of orders) {
 if (o.clienteId===id){
-    counter++;
-    totale+=costoTotale;
-    
+    result.totale_speso+=o.costoTotale;
+    result.numero_ordini++ ;
+    clientOrders.push(o);
 }
-
 for (let t of taglie) {
     if ((t.clienteId===id)&&(t.attiva===true)){
-        taglie++;
+        result.taglie_attive++;
     }
 }
-
+for (let o of clientOrders) {
+    for (let b of bevandePref) {
+        if (o.bevandaId===b.id) {
+            b.qta++;
+        }
+        else {
+            let bev = {
+                id : o.id ,
+                qta : o.quantita 
+            }
+            bevandePref.push(bev);
+        }
+    }
+}
+let bevPref = {
+    id: -1,
+    qta: -1
+}
+for (let b of bevandePref){
+    if (b.qta>bevPref){
+        bevPref.id = b.id ;
+        bevPref.qta = b.qta ;
+    }
+}
+result.bevanda_preferita=
 }});
 
 app.listen(3000, () => {
