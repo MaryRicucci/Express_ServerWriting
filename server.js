@@ -26,6 +26,10 @@ let ordini = [
     {id: 4, clienteId: 4, bevandaId: 2, quantita: 2, costoBase: 160, maggiorazione: 24, costoTotale: 184}
 ];
 let taglie = [];
+let missioni =  [{ id: 1, codice: 'AURORA-1', descrizione: 'Recupero piani della Morte Nera', pianeta: 'Scarif', rischio: 'alto', clearance: 3, agente: 'Cassian Andor' },
+{ id: 2, codice: 'NEBULA-4', descrizione: 'Sorveglianza porto di Mos Eisley', pianeta: 'Tatooine', rischio: 'basso', clearance: 1, agente: 'Fulcrum' },
+{ id: 3, codice: 'ECLIPSE-7', descrizione: 'Sabotaggio generatori imperiali', pianeta: 'Lothal', rischio: 'alto', clearance: 2, agente: 'Hera Syndulla' },
+{ id: 4, codice: 'PHANTOM-2', descrizione: 'Estrazione agente sotto copertura', pianeta: 'Coruscant', rischio: 'critico', clearance: 3, agente: 'Sconosciuto' }]
 
 let nextClientId = clienti.length + 1;
 let nextBevandaId = bevande.length+1;
@@ -129,6 +133,32 @@ else {
 }
 next();
 });
+
+app.use("/missioni",(req,res,next)=>{
+    if (req.method!=="GET"){
+        return res.status(405).json("Metodo non consentito. Le missioni non si toccano");
+    }
+    next();
+});
+app.use("/missioni",(req,res,next)=>{
+    const header = parseInt(req.headers["x-clearance"])
+    if(isNaN(header)){
+        req.clearance=0;
+    }
+    else{
+        req.clearance=header;
+    }
+    next();
+});
+app.use("/missioni",(req,res,next)=>{
+    req.missioniVisibili = [];
+    for (let m of missioni) {
+        if (m.clearance<=req.clearance){
+           req.missioniVisibili.push(m);
+        }
+    }
+    next();
+})
 
 //Rotta per POST clienti
 app.post("/clienti", (req, res) => {
@@ -340,73 +370,156 @@ app.get("/clienti/:id/ordini",(req,res)=>{
         return res.status(200).json(ordineWh);
     }
 });
-//Rotta GET clienti/id/riepilogo
-app.get("/clienti/:id/riepilogo",(req,res)=>{
+// Rotta GET clienti/id/riepilogo
+app.get("/clienti/:id/riepilogo", (req, res) => {
     const id = parseInt(req.params.id);
-    if (!Number.isinteger(Number(id))){
+    if (!Number.isInteger(id)) {
         return res.status(400).json("id non valido");
     }
     let cliente = null;
     for (let c of clienti) {
-        if (c.id===id){
-            cliente = c ;
-            break ;
+        if (c.id === id) {
+            cliente = c;
+            break;
         }
     }
-    if (!cliente){
+    if (!cliente) {
         return res.status(404).json("Utente non trovato");
     }
-    /*Calcolare e restituire un oggetto con i seguenti campi:
-
-bevanda_preferita: nome della bevanda ordinata in maggiore quantita totale. Null se non ha ordini.
-*/
-let result = {
-    cliente : cliente.nome ,
-    credito_attuale: cliente.credito , 
-    numero_ordini : 0 ,
-    totale_speso : 0 ,
-    bevanda_preferita: null,
-    taglie_attive: 0 ,
-}
-let clientOrders = [];
-let bevandePref = [];
-for (let o of orders) {
-if (o.clienteId===id){
-    result.totale_speso+=o.costoTotale;
-    result.numero_ordini++ ;
-    clientOrders.push(o);
-}
-for (let t of taglie) {
-    if ((t.clienteId===id)&&(t.attiva===true)){
-        result.taglie_attive++;
-    }
-}
-for (let o of clientOrders) {
-    for (let b of bevandePref) {
-        if (o.bevandaId===b.id) {
-            b.qta++;
+    let result = {
+        cliente: cliente.nome,
+        credito_attuale: cliente.credito,
+        numero_ordini: 0,
+        totale_speso: 0,
+        bevanda_preferita: null,
+        taglie_attive: 0
+    };
+    let clientOrders = [];
+    let bevandePref = [];
+    for (let o of ordini) {
+        if (o.clienteId === id) {
+            result.totale_speso += o.costoTotale;
+            result.numero_ordini++;
+            clientOrders.push(o);
         }
-        else {
-            let bev = {
-                id : o.id ,
-                qta : o.quantita 
+    }
+    for (let t of taglie) {
+        if (t.clienteId === id && t.attiva === true) {
+            result.taglie_attive++;
+        }
+    }
+    for (let o of clientOrders) {
+        if (bevandePref.length === 0) {
+            bevandePref.push({
+                id: o.bevandaId,
+                qta: o.quantita
+            });
+            continue;
+        }
+    let trovata = false;
+        for (let b of bevandePref) {
+            if (b.id === o.bevandaId) {
+                b.qta += o.quantita;
+                trovata = true;
+                break;
             }
-            bevandePref.push(bev);
+        }
+
+        if (!trovata) {
+            bevandePref.push({
+                id: o.bevandaId,
+                qta: o.quantita
+            });
         }
     }
-}
-let bevPref = {
-    id: -1,
-    qta: -1
-}
-for (let b of bevandePref){
-    if (b.qta>bevPref){
-        bevPref.id = b.id ;
-        bevPref.qta = b.qta ;
+    let bevPref = { id: -1, qta: -1 };
+    for (let b of bevandePref) {
+        if (b.qta > bevPref.qta) {
+            bevPref.id = b.id;
+            bevPref.qta = b.qta;
+        }
     }
-}
-result.bevanda_preferita=
-}});
+    if (bevPref.id !== -1) {
+        for (let b of bevande) {
+            if (b.id === bevPref.id) {
+                result.bevanda_preferita = b.nome;
+                break;
+            }
+        }
+    }
+
+    return res.status(200).json(result);
+});
+
+//Get missioni
+app.get("/missioni",(req,res)=> {
+    if(req.clearance===0){
+        return res.status(403).json("Clearance insufficiente. Non sai niente.");
+    }
+    else if (req.clearance<3){
+        let visibili = [];
+        for (let m of req.missioniVisibili){
+            let copia = {
+                id : m.id ,
+                nome : m.nome ,
+                agente :  "[CLASSIFICATO]" ,
+                clearance : m.clearance ,
+                descrizione : m.descrizione
+            }
+            visibili.push(copia);
+        }
+        return res.status(200).json(visibili);
+    }
+    else{
+        return res.status(200).json(req.missioniVisibili);
+    }
+});
+//get missioni/id
+app.get("/missioni/:id", (req, res) => {
+    const id = parseInt(req.params.id);
+    let copia = null;
+
+    // Caso 1: clearance 0 → blocco totale
+    if (req.clearance === 0) {
+        return res.status(403).json("Clearance insufficiente. Non sai niente.");
+    }
+
+    // Cerco la missione nelle missioni visibili
+    for (let m of req.missioniVisibili) {
+        if (m.id === id) {
+            copia = {
+                id: m.id,
+                nome: m.nome,
+                agente: m.agente,     
+                clearance: m.clearance,
+                descrizione: m.descrizione
+            };
+
+            if (req.clearance < 3) {
+                copia.agente = "[CLASSIFICATO]";
+            }
+
+            break;
+        }
+    }
+    if (!copia) {
+        let presente = false;
+
+        for (let m of missioni) {
+            if (m.id === id) {
+                presente = true;
+                break;
+            }
+        }
+
+        if (presente) {
+            return res.status(403).json("Clearance insufficiente per questa missione.");
+        } else {
+            return res.status(404).json("Missione non trovata.");
+        }
+    }
+    return res.status(200).json(copia);
+});
 
 app.listen(3000, () => {
     console.log("Connessione aperta sulla porta 3000");
