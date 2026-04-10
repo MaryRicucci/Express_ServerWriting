@@ -1,15 +1,11 @@
-// npm install express
-//node --watch server.js
-//Ctrl S
 const express = require('express');
 const app = express();
 app.use(express.json());
-//Tutti i MIDDLEWARE OK
 
 let clienti = [
     {id: 1, nome: "Han Solo", specie: "umano", credito: 1500},
-    {id: 2, nome: "Chewbecca", specie: "wookie",credito: 900},
-    {id: 3, nome: "Greedo", specie: "rodiano", credito: 300},
+    {id: 2, nome: "Greedo", specie: "rodiano", credito: 300},
+    {id: 3, nome: "Chewbecca", specie: "wookie",credito: 900},
     {id: 4, nome: "hammerhead", specie: "ithoriano", credito: 200}
 ];
 
@@ -25,12 +21,22 @@ let ordini = [
     {id: 3, clienteId: 3, bevandaId: 3, quantita: 2, costoBase: 240, maggiorazione: 36, costoTotale: 276},
     {id: 4, clienteId: 4, bevandaId: 2, quantita: 2, costoBase: 160, maggiorazione: 24, costoTotale: 184}
 ];
-let taglie = [];
+let taglie = [
+    {id:1, clienteId: 2, motivazione: "ha rubato una nave", ricompensa: 800, attiva:true}
+];
 let missioni =  [{ id: 1, codice: 'AURORA-1', descrizione: 'Recupero piani della Morte Nera', pianeta: 'Scarif', rischio: 'alto', clearance: 3, agente: 'Cassian Andor' },
 { id: 2, codice: 'NEBULA-4', descrizione: 'Sorveglianza porto di Mos Eisley', pianeta: 'Tatooine', rischio: 'basso', clearance: 1, agente: 'Fulcrum' },
 { id: 3, codice: 'ECLIPSE-7', descrizione: 'Sabotaggio generatori imperiali', pianeta: 'Lothal', rischio: 'alto', clearance: 2, agente: 'Hera Syndulla' },
-{ id: 4, codice: 'PHANTOM-2', descrizione: 'Estrazione agente sotto copertura', pianeta: 'Coruscant', rischio: 'critico', clearance: 3, agente: 'Sconosciuto' }]
-
+{ id: 4, codice: 'PHANTOM-2', descrizione: 'Estrazione agente sotto copertura', pianeta: 'Coruscant', rischio: 'critico', clearance: 3, agente: 'Sconosciuto' }];
+let tessere = [
+    {codice: "HAN-001",ruolo:"cliente",clearance:1},
+    {codice: "CHEWIE-02",ruolo: "cliente",clearance:1},
+    {codice: "BOBA-007",ruolo:"cacciatore",clearance:2},
+    {codice : "BOSSK-008",ruolo: "cacciatore",clearance:1},
+    {codice: "FULCRUM-3",ruolo: "ribelle", clearance:2},
+    {codice : "CASSIAN-9",ruolo: "ribelle",clearance:3},
+    {codice: "ADMIN-000", ruolo: "admin", clearance: 3}
+];
 let nextClientId = clienti.length + 1;
 let nextBevandaId = bevande.length+1;
 let nextOrdineId = ordini.length+1;
@@ -48,8 +54,23 @@ app.use((req, res, next) => {
 app.use("/clienti", (req, res, next) => {
     const tessera = req.headers["x-tessera"];
     if (!tessera) {
-        res.status(403).json({ error: "devi avere una tessera. Regola della cantina" });
+        return res.status(401).json({ error: "Tessera mancante. Nessuno entra senza tesserino." });
     }
+    let tex = null;
+    //QUI
+    for (let t of tessere) {
+        if (t.codice===tessera){
+            tex = t;
+            console.log(tex);
+        }
+    }
+    
+    if(!tex){
+         return res.status(403).json({error: "tessera non riconosciuta"});
+    }
+    else{
+        req.tessera=tex;
+}
     next();
 });
 //Aggiunge il contesto
@@ -209,7 +230,6 @@ app.post("/ordini",(req,res)=>{
             break;
         }
     }
-
     for (let b of bevande) {
         if(b.id===req.body.bevandaId){
             bevandaId = req.body.bevandaId;
@@ -251,11 +271,24 @@ app.post("/ordini",(req,res)=>{
         costo_base : costo_base , 
         maggiorazione : maggiorazione ,
         costo_totale : costo_totale
-    }
+    };
     ordini.push(newOrder);
     client.credito-=costo_totale;
     nextOrdineId++;
-    res.status(201).json(newOrder);
+    let numeroTaglie = 0;
+    let taglia_riscossa = 0 ;
+    for (let t of taglie ) {
+    if (t.clienteId===client.id){
+        if (t.attiva) {
+            t.attiva = false;
+            if (client.credito<500){
+                taglia_riscossa=t.ricompensa+(t.ricompensa/100)*20;
+                //client.credito+=taglia_riscossa; a chi va la ricompensa? a lui? a chi lo vede?
+            }
+            numeroTaglie++;
+        }
+    }}
+    res.status(201).json({newOrder,taglia_riscossa,numeroTaglie});
 })
 
 //Rotta per PUT cliente
