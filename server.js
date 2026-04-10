@@ -1,3 +1,6 @@
+// npm install express
+//node --watch server.js
+//Ctrl S
 const express = require('express');
 const app = express();
 app.use(express.json());
@@ -71,6 +74,7 @@ app.use("/clienti", (req, res, next) => {
     else{
         req.tessera=tex;
 }
+
     next();
 });
 //Aggiunge il contesto
@@ -115,6 +119,14 @@ app.use("/clienti", (req, res, next) => {
     }
     next();
 });
+//Validatore tessera Ordini
+app.use("/ordini",(req,res,next)=>{
+if((req.tessera.ruolo!=="admin")&&(req.tessera.ruolo!=="cliente")){
+        return res.status(405).json({error : "Non hai l'autorizzazione per vedere ordini"});
+    }
+    next();
+})
+
 //VALIDATORE STRUTTURA ORDINE
 app.use("/ordini", (req, res, next) => {
     if (req.method !== "POST") {
@@ -312,6 +324,9 @@ app.put("/clienti/:id",(req,res)=>{
 
 //Rotta per DELETE cliente
 app.delete("/clienti/:id",(req,res)=>{
+    if (req.tessera.ruolo!=="admin"){
+        return res.status(405).json({error: "Solo l'admin può rimuovere clienti"});
+    }
     const id = parseInt(req.params.id);
     let cliente = -1;
     for (let c=0; c<clienti.length;c++) {
@@ -587,3 +602,4 @@ function verificaPrezzo(bevandaId,costo_base) {
     costo_totale = costo_base+iva ;
     return {iva, costo_totale};
 }
+
