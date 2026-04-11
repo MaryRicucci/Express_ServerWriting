@@ -191,6 +191,13 @@ app.use("/missioni",(req,res,next)=>{
         }
     }
     next();
+});
+//Middleware per taglie
+app.use("/taglie",(req,res,next)=>{
+    if((req.tessera.ruolo!=="cacciatore")&&(req.tessera.ruolo!=="admin")){
+        return res.status(405).json("Non sei autorizzato ad accedere a questa risorsa");
+    }
+
 })
 
 //Rotta per POST clienti
@@ -567,6 +574,34 @@ app.get("/missioni/:id", (req, res) => {
         }
     }
     return res.status(200).json(copia);
+});
+//PATCH /taglie
+app.patch("/taglie/:id/chiudi",(req,res)=>{
+    const ruolo = req.tessera.ruolo;
+    const id = parseInt(req.params.id);
+    if (ruolo!=="admin"){
+        return res.status(403).json({errore : 'Non sei autorizzato a modificare questa risorsa'});
+    }
+    if (isNaN(id)){
+        return res.status(400).json({errore: 'ID non valido'});
+    }
+    let taglia = null;
+    for (let t of taglie) {
+        // {, motivazione, ricompensa, attiva}
+        if (t.id===id){
+            taglia = t ;
+            break ;
+        }
+    }
+    if (!taglia){
+       return res.status(404).json({errore: 'Taglia non trovata'});
+    }
+    if (!taglia.attiva){
+        return res.status(400).json({errore: 'Taglia già riscossa'});
+    }
+    taglia.attiva = false ;
+    res.status(200).json({message: 'taglia riscossa',taglia});
+    
 });
 
 app.listen(3000, () => {
