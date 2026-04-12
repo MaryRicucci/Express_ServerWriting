@@ -168,22 +168,21 @@ next();
 });
 
 app.use("/missioni",(req,res,next)=>{
+    const ruolo = req.tessera.ruolo ;
+    if ((ruolo!=="ribelle")&&((ruolo!=="admin"))){
+        return res.status(403).json("Non sei autorizzato ad accedere a questa risorsa.");
+    }
+    next();
+});
+app.use("/missioni",(req,res,next)=>{
     if (req.method!=="GET"){
         return res.status(405).json("Metodo non consentito. Le missioni non si toccano");
     }
     next();
 });
+
 app.use("/missioni",(req,res,next)=>{
-    const header = parseInt(req.headers["x-clearance"])
-    if(isNaN(header)){
-        req.clearance=0;
-    }
-    else{
-        req.clearance=header;
-    }
-    next();
-});
-app.use("/missioni",(req,res,next)=>{
+    req.clearance = req.tessera.clearance ;
     req.missioniVisibili = [];
     for (let m of missioni) {
         if (m.clearance<=req.clearance){
